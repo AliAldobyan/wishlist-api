@@ -21,15 +21,38 @@ class RegisterSerializer(serializers.ModelSerializer):
         return validated_data
 
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name']
+
+
 class ItemSerializer(serializers.ModelSerializer):
     detail = serializers.HyperlinkedIdentityField(view_name='api-detail', lookup_field="id", lookup_url_kwarg="item_id")
-
+    added_by = UserSerializer()
+    favourited = serializers.SerializerMethodField()
     class Meta:
         model = Item
-        fields = ["name", "detail"]
+        fields = ["name", "detail", "added_by", "favourited"]
+
+    def get_favourited(self, obj):
+        return FavoriteItem.objects.filter(item=obj).count()
+
+
+class FavoriteItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FavoriteItem
+        fields = ['user']
 
 
 class ItemDetailsSerializer(serializers.ModelSerializer):
+    favourited_by = serializers.SerializerMethodField()
+    added_by = UserSerializer()
     class Meta:
         model = Item
-        fields = "__all__"
+        fields = ['image', 'name', 'description', 'added_by', 'id', 'favourited_by']
+
+    def get_favourited_by(self, obj):
+        fav_items = FavoriteItem.objects.filter(item=obj)
+
+        return FavoriteItemSerializer(fav_items, many=True).data
